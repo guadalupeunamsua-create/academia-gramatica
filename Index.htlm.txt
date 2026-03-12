@@ -1,0 +1,613 @@
+
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master en Redacción y Gramática - Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card-anim { transition: all 0.3s ease; }
+        .card-anim:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .correct-ans { border-color: #10b981 !important; background-color: #ecfdf5 !important; }
+        .wrong-ans { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="p-4 md:p-8 text-slate-800">
+    <div id="app" class="max-w-4xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">Plataforma de Gramática Española</h1>
+            <p class="text-gray-600 italic">Domina el idioma, un acierto a la vez.</p>
+        </header>
+
+        <!-- DASHBOARD -->
+        <div id="dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div onclick="startQuiz('gramatica')" class="card-anim bg-white p-6 rounded-xl border-l-4 border-blue-500 cursor-pointer shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="p-3 bg-blue-100 rounded-lg text-blue-600 mr-4"><i class="fas fa-book-open fa-lg"></i></div>
+                    <h2 class="text-xl font-semibold">1. Reglas Gramaticales</h2>
+                </div>
+                <p class="text-sm text-gray-500">Concordancia, verbos irregulares y pronombres.</p>
+            </div>
+            <!-- ... Repetir para otros módulos o dejar como estaban ... -->
+            <div onclick="startQuiz('redaccion')" class="card-anim bg-white p-6 rounded-xl border-l-4 border-emerald-500 cursor-pointer shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="p-3 bg-emerald-100 rounded-lg text-emerald-600 mr-4"><i class="fas fa-pen-nib fa-lg"></i></div>
+                    <h2 class="text-xl font-semibold">2. Redacción y Puntuación</h2>
+                </div>
+                <p class="text-sm text-gray-500">Conectores y el uso de la coma.</p>
+            </div>
+        </div>
+
+        <!-- CONTENEDOR DE QUIZ -->
+        <div id="quiz-container" class="hidden bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="showDashboard()" class="text-indigo-600 hover:text-indigo-800 flex items-center font-medium">
+                    <i class="fas fa-arrow-left mr-2"></i> Salir
+                </button>
+                <div class="flex flex-col items-end">
+                    <div id="progress-text" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pregunta 1 de 3</div>
+                    <div id="score-counter" class="text-indigo-600 font-bold text-lg">Puntos: 0</div>
+                </div>
+            </div>
+
+            <div id="question-box">
+                <h3 id="question-text" class="text-2xl font-semibold mb-6">Pregunta de ejemplo</h3>
+                <div id="options-container" class="grid gap-4"></div>
+                
+                <div id="feedback" class="mt-6 p-4 rounded-lg hidden animate-pulse"></div>
+
+                <button id="next-btn" onclick="nextQuestion()" class="mt-8 w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg hidden">
+                    Continuar <i class="fas fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+
+            <!-- RESULTADOS FINALES -->
+            <div id="results-screen" class="hidden text-center py-10">
+                <div class="text-6xl mb-4" id="result-icon">🏆</div>
+                <h2 class="text-3xl font-bold mb-2">¡Módulo Completado!</h2>
+                <p id="final-score-text" class="text-xl text-gray-600 mb-8"></p>
+                <button onclick="showDashboard()" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold hover:bg-indigo-800 transition-all">
+                    Volver al Inicio
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const database = {
+            gramatica: [
+                { q: "¿Cuál oración presenta concordancia gramatical correcta?", o: ["La mayoría de los estudiantes aprobaron", "La gente decían la verdad", "Habían muchos problemas allí"], a: 0, f: "Correcto. Con sustantivos colectivos + 'de' + plural, el verbo admite plural." },
+                { q: "Conjuga 'Caber' en futuro simple (1ra pers. sing.):", o: ["Caberé", "Cabré", "Quepa"], a: 1, f: "¡Exacto! El radical cambia a 'cabr-'." }
+            ],
+            redaccion: [
+                { q: "Conector de contraste: 'No vino, ____ envió la tarea.'", o: ["ya que", "por consiguiente", "no obstante"], a: 2, f: "Correcto. 'No obstante' indica oposición." }
+            ]
+        };
+
+        let currentQuiz = [];
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let answered = false;
+
+        function startQuiz(category) {
+            currentQuiz = database[category];
+            currentQuestionIdx = 0;
+            score = 0;
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('question-box').classList.remove('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+            updateScoreDisplay();
+            showQuestion();
+        }
+
+        function showDashboard() {
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('quiz-container').classList.add('hidden');
+        }
+
+        function showQuestion() {
+            answered = false;
+            const question = currentQuiz[currentQuestionIdx];
+            document.getElementById('progress-text').innerText = `Pregunta ${currentQuestionIdx + 1} de ${currentQuiz.length}`;
+            document.getElementById('question-text').innerText = question.q;
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            
+            const optionsDiv = document.getElementById('options-container');
+            optionsDiv.innerHTML = '';
+            
+            question.o.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx, btn);
+                optionsDiv.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx, btn) {
+            if (answered) return; // Evitar múltiples clics
+            answered = true;
+
+            const question = currentQuiz[currentQuestionIdx];
+            const feedback = document.getElementById('feedback');
+            const options = document.getElementById('options-container').children;
+
+            feedback.classList.remove('hidden');
+            
+            if(idx === question.a) {
+                score++;
+                btn.classList.add('correct-ans');
+                feedback.className = "mt-6 p-4 rounded-lg bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200";
+                feedback.innerHTML = `<i class="fas fa-check-circle mr-2"></i> ${question.f}`;
+            } else {
+                btn.classList.add('wrong-ans');
+                options[question.a].classList.add('correct-ans'); // Mostrar la correcta
+                feedback.className = "mt-6 p-4 rounded-lg bg-rose-50 text-rose-700 font-semibold border border-rose-200";
+                feedback.innerHTML = `<i class="fas fa-times-circle mr-2"></i> ¡Incorrecto! La respuesta correcta era: ${question.o[question.a]}`;
+            }
+            
+            updateScoreDisplay();
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('score-counter').innerText = `Puntos: ${score}`;
+        }
+
+        function nextQuestion() {
+            currentQuestionIdx++;
+            if(currentQuestionIdx < currentQuiz.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('question-box').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+            const percent = (score / currentQuiz.length) * 100;
+            document.getElementById('final-score-text').innerText = `Lograste ${score} de ${currentQuiz.length} puntos (${percent}% de efectividad).`;
+            document.getElementById('result-icon').innerText = percent >= 70 ? '🏆' : '📚';
+        }
+    </script>
+</body>
+</html>
+Usa el código con precaución.
+
+¿Te gustaría que añadamos ahora una barra de progreso visual que se llene mientras avanzas en las preguntas? (Esto ayuda mucho a reducir la ansiedad del usuario y dar sensación de logro).
+
+
+
+
+Si, por favor
+¡Hecho! He añadido la barra de progreso justo debajo del encabezado del quiz. Se actualiza con una transición suave cada vez que pasas de pregunta.
+Aquí tienes el bloque de código actualizado:
+html
+<!-- Barra de Progreso Visual -->
+<div class="w-full bg-slate-100 h-2 rounded-full mb-6 overflow-hidden">
+    <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-500 ease-out" style="width: 0%"></div>
+</div>
+
+<script>
+// Dentro de la función showQuestion() añade esta línea:
+function updateProgressBar() {
+    const progress = ((currentQuestionIdx) / currentQuiz.length) * 100;
+    document.getElementById('progress-bar').style.width = `${progress}%`;
+}
+
+// Y al final del quiz o en showResults(), llénala al 100%:
+function showResults() {
+    document.getElementById('progress-bar').style.width = `100%`;
+    // ... resto del código de resultados ...
+}
+</script>
+Usa el código con precaución.
+
+Para que funcione impecable, solo asegúrate de llamar a updateProgressBar() al inicio de showQuestion().
+¿Quieres que integremos una base de datos más amplia con 20 preguntas nuevas para que el reto sea mayor? (Esto evitará que el usuario memorice las respuestas rápido).
+
+
+
+
+Si, por favor
+¡Excelente decisión! Una base de datos robusta es lo que convierte una "demo" en una herramienta de estudio real.
+He expandido el objeto database con 20 preguntas nuevas distribuidas en las 4 categorías, cubriendo desde vicios del lenguaje hasta tildes diacríticas y verbos complejos.
+Copia y reemplaza el bloque const database en tu script:
+javascript
+const database = {
+    gramatica: [
+        { q: "¿Cuál es el participio irregular de 'Escribir'?", o: ["Escribido", "Escrito", "Escribiente"], a: 1, f: "Correcto. Es un participio irregular común." },
+        { q: "Elige la opción sin 'dequeísmo':", o: ["Pienso de que vendrá", "Me dijo de que no sabía", "Estoy seguro de que vendrá"], a: 2, f: "Correcto. 'Estar seguro' exige la preposición 'de'." },
+        { q: "¿Cuál es el sujeto en: 'A Luis le gustan las manzanas'?", o: ["Luis", "Le", "Las manzanas"], a: 2, f: "El sujeto es 'las manzanas', ya que concuerdan en plural con el verbo 'gustan'." },
+        { q: "Uso de 'Sino' vs 'Si no':", o: ["No quiero pan, sino agua", "No quiero pan, si no agua", "Sino vienes, me voy"], a: 0, f: "'Sino' (junto) se usa para contraponer una idea a otra negativa." },
+        { q: "Voz pasiva correcta:", o: ["Se venden casas", "Se vende casas", "Véndense las casas"], a: 0, f: "En pasiva refleja, el verbo debe concordar con el sujeto (casas)." }
+    ],
+    redaccion: [
+        { q: "Identifica el pleonasmo (redundancia):", o: ["Subir arriba", "Entrar rápido", "Caminar lejos"], a: 0, f: "Subir implica ir hacia arriba; es una redundancia innecesaria." },
+        { q: "¿Qué signo se usa para introducir una enumeración explicativa?", o: ["Punto y coma", "Dos puntos", "Puntos suspensivos"], a: 1, f: "Los dos puntos detienen el discurso para llamar la atención sobre lo que sigue." },
+        { q: "Uso de la coma: ¿Cuál es correcta?", o: ["Hola, Juan.", "Hola Juan.", "Juan, fue al cine."], a: 0, f: "Se usa coma para aislar el vocativo (la persona a quien llamamos)." },
+        { q: "Conector causal:", o: ["Sin embargo", "Dado que", "Por lo tanto"], a: 1, f: "'Dado que' introduce la causa o razón de algo." },
+        { q: "Evitar la 'cosificación': Mejor alternativa a 'La cosa de la que hablamos':", o: ["El asunto", "El algo", "El eso"], a: 0, f: "Es mejor usar sustantivos precisos como 'asunto', 'tema' o 'situación'." }
+    ],
+    vocabulario: [
+        { q: "Sinónimo de 'EFÍMERO':", o: ["Eterno", "Fugaz", "Pesado"], a: 1, f: "Algo fugaz es algo que dura muy poco." },
+        { q: "Analogía: MÉDICO es a HOSPITAL como PROFESOR es a:", o: ["Libro", "Alumno", "Escuela"], a: 2, f: "Relación de agente-lugar de trabajo." },
+        { q: "Antónimo de 'BELICISTA':", o: ["Guerrero", "Pacifista", "Agresivo"], a: 1, f: "El belicista promueve la guerra; el pacifista, la paz." },
+        { q: "¿Qué significa 'Inhóspito'?", o: ["Lugar acogedor", "Lugar inhabitable", "Persona amable"], a: 1, f: "Un lugar incómodo o que no ofrece seguridad." },
+        { q: "Palabra parónima: 'Aptitud' se refiere a:", o: ["Capacidad o habilidad", "Postura del cuerpo", "Ganas de comer"], a: 0, f: "Aptitud es capacidad; Actitud es disposición de ánimo." }
+    ],
+    ortografia: [
+        { q: "¿Cuál lleva tilde diacrítica por ser pronombre?", o: ["El (artículo)", "Él (persona)", "Tu (posesivo)"], a: 1, f: "Él lleva tilde cuando funciona como pronombre personal." },
+        { q: "Escritura correcta:", o: ["A traves", "Através", "A través"], a: 2, f: "Se escribe separado y con tilde en la 'e'." },
+        { q: "¿Cuál es una palabra esdrújula?", o: ["Camión", "Pájaro", "Mesa"], a: 1, f: "Las esdrújulas siempre se tildan en la antepenúltima sílaba." },
+        { q: "Uso de la 'H':", o: ["Echar de menos", "Hechar de menos", "Hachar de menos"], a: 0, f: "El verbo 'echar' no lleva H (la H es de 'hacer')." },
+        { q: "Palabra con 'G' o 'J':", o: ["Escojer", "Escoger", "Excojer"], a: 1, f: "Los verbos terminados en -ger/-gir se escriben con G, excepto tejer y crujir." }
+    ]
+};
+Usa el código con precaución.
+
+¿Te gustaría que añadamos un temporizador de 30 segundos por pregunta para darle más emoción? (Esto obligará al usuario a pensar rápido, simulando un examen real).
+
+
+
+
+Si, por favor
+¡Esto se está convirtiendo en una aplicación de alto nivel! 🚀
+He añadido un temporizador circular que cambia de color (de azul a rojo) cuando quedan menos de 10 segundos. Si el tiempo se agota, la pregunta se marca como incorrecta automáticamente para obligar al usuario a mantener el ritmo.
+Aquí tienes las piezas clave para actualizar tu código:
+1. El HTML del Temporizador
+Coloca esto justo arriba de la barra de progreso:
+html
+<div class="flex justify-center mb-4">
+    <div id="timer-container" class="relative flex items-center justify-center w-16 h-16 rounded-full border-4 border-indigo-100 transition-colors duration-300">
+        <span id="timer-text" class="text-xl font-bold text-indigo-600">30</span>
+    </div>
+</div>
+Usa el código con precaución.
+
+2. La Lógica en JavaScript
+Sustituye o añade estas funciones en tu script:
+javascript
+let timeLeft = 30;
+let timerInterval;
+
+function startTimer() {
+    clearInterval(timerInterval); // Limpiar cualquier timer previo
+    timeLeft = 30;
+    const timerText = document.getElementById('timer-text');
+    const timerCont = document.getElementById('timer-container');
+    
+    updateTimerDisplay(timerText, timerCont);
+
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay(timerText, timerCont);
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            handleTimeout();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay(textEl, contEl) {
+    textEl.innerText = timeLeft;
+    if (timeLeft <= 10) {
+        contEl.classList.replace('border-indigo-100', 'border-rose-500');
+        textEl.classList.replace('text-indigo-600', 'text-rose-600');
+    } else {
+        contEl.className = "relative flex items-center justify-center w-16 h-16 rounded-full border-4 border-indigo-100 transition-colors duration-300";
+        textEl.className = "text-xl font-bold text-indigo-600";
+    }
+}
+
+function handleTimeout() {
+    if (answered) return;
+    const feedback = document.getElementById('feedback');
+    const question = currentQuiz[currentQuestionIdx];
+    
+    answered = true;
+    feedback.classList.remove('hidden');
+    feedback.className = "mt-6 p-4 rounded-lg bg-amber-50 text-amber-700 font-semibold border border-amber-200";
+    feedback.innerHTML = `<i class="fas fa-clock mr-2"></i> ¡Se acabó el tiempo! La respuesta era: ${question.o[question.a]}`;
+    
+    document.getElementById('next-btn').classList.remove('hidden');
+}
+
+// IMPORTANTE: Llama a startTimer() dentro de showQuestion() 
+// e invoca clearInterval(timerInterval) dentro de checkAnswer().
+Usa el código con precaución.
+
+Para que todo fluya, recuerda que en la función showQuestion() ahora debes resetear el progreso y el timer.
+¿Te gustaría que añadamos un efecto de sonido (un "tic-tac" suave o un "clic" al acertar) para que la experiencia sea totalmente inmersiva? (Esto le da el toque final de "App profesional").proceder? (Esto permitirá que la herramienta sea útil incluso sin conexión a internet).
+
+
+
+
+Así, está bien, gracias. ¿Tengo que copiar todos los códigos en el original estudio_gramatica_htlm?
+¡De nada! Exacto, para que todo funcione correctamente, lo ideal es que unas todas las piezas en un solo archivo.
+Como hemos ido añadiendo la barra de progreso, el sistema de puntos, las 20 preguntas y el temporizador, aquí tienes la versión final completa y lista para usar. Solo tienes que copiar este código, guardarlo como estudio_gramatica.html y abrirlo en tu navegador:
+html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master en Redacción y Gramática Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card-anim { transition: all 0.3s ease; }
+        .card-anim:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .correct-ans { border-color: #10b981 !important; background-color: #ecfdf5 !important; color: #065f46 !important; }
+        .wrong-ans { border-color: #ef4444 !important; background-color: #fef2f2 !important; color: #991b1b !important; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="app" class="max-w-4xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">Plataforma de Gramática Española</h1>
+            <p class="text-gray-600">Entrenamiento interactivo con tiempo y puntaje.</p>
+        </header>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div onclick="startQuiz('gramatica')" class="card-anim bg-white p-6 rounded-xl border-l-4 border-blue-500 cursor-pointer shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="p-3 bg-blue-100 rounded-lg text-blue-600 mr-4"><i class="fas fa-book-open fa-lg"></i></div>
+                    <h2 class="text-xl font-semibold">1. Reglas Gramaticales</h2>
+                </div>
+                <p class="text-sm text-gray-500">Concordancia, verbos y sintaxis.</p>
+            </div>
+            <div onclick="startQuiz('redaccion')" class="card-anim bg-white p-6 rounded-xl border-l-4 border-emerald-500 cursor-pointer shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="p-3 bg-emerald-100 rounded-lg text-emerald-600 mr-4"><i class="fas fa-pen-nib fa-lg"></i></div>
+                    <h2 class="text-xl font-semibold">2. Redacción y Puntuación</h2>
+                </div>
+                <p class="text-sm text-gray-500">Conectores, comas y estilo.</p>
+            </div>
+            <div onclick="startQuiz('vocabulario')" class="card-anim bg-white p-6 rounded-xl border-l-4 border-amber-500 cursor-pointer shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="p-3 bg-amber-100 rounded-lg text-amber-600 mr-4"><i class="fas fa-language fa-lg"></i></div>
+                    <h2 class="text-xl font-semibold">3. Vocabulario Lógico</h2>
+                </div>
+                <p class="text-sm text-gray-500">Sinónimos, antónimos y analogías.</p>
+            </div>
+            <div onclick="startQuiz('ortografia')" class="card-anim bg-white p-6 rounded-xl border-l-4 border-rose-500 cursor-pointer shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="p-3 bg-rose-100 rounded-lg text-rose-600 mr-4"><i class="fas fa-spell-check fa-lg"></i></div>
+                    <h2 class="text-xl font-semibold">4. Ortografía y Acentuación</h2>
+                </div>
+                <p class="text-sm text-gray-500">Tildes y grafías problemáticas.</p>
+            </div>
+        </div>
+
+        <!-- Quiz Container -->
+        <div id="quiz-container" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+                <button onclick="showDashboard()" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                    <i class="fas fa-arrow-left mr-2"></i> Salir
+                </button>
+                <div class="text-right">
+                    <div id="progress-text" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pregunta 1 de 5</div>
+                    <div id="score-counter" class="text-indigo-600 font-bold">Puntos: 0</div>
+                </div>
+            </div>
+
+            <!-- Timer y Barra -->
+            <div class="flex justify-center mb-4">
+                <div id="timer-container" class="w-14 h-14 rounded-full border-4 border-indigo-100 flex items-center justify-center">
+                    <span id="timer-text" class="text-lg font-bold text-indigo-600">30</span>
+                </div>
+            </div>
+            <div class="w-full bg-slate-100 h-2 rounded-full mb-8">
+                <div id="progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+
+            <div id="question-box">
+                <h3 id="question-text" class="text-xl md:text-2xl font-semibold mb-6"></h3>
+                <div id="options-container" class="grid gap-3"></div>
+                <div id="feedback" class="mt-6 p-4 rounded-lg hidden"></div>
+                <button id="next-btn" onclick="nextQuestion()" class="mt-8 w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 hidden">
+                    Siguiente Pregunta <i class="fas fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+
+            <!-- Resultados -->
+            <div id="results-screen" class="hidden text-center py-10">
+                <div class="text-6xl mb-4" id="result-icon">🏆</div>
+                <h2 class="text-3xl font-bold mb-2">Módulo Finalizado</h2>
+                <p id="final-score-text" class="text-lg text-gray-600 mb-8"></p>
+                <button onclick="showDashboard()" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold hover:bg-indigo-800">
+                    Volver al Menú
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const database = {
+            gramatica: [
+                { q: "¿Cuál es el participio irregular de 'Escribir'?", o: ["Escribido", "Escrito", "Escribiente"], a: 1, f: "Correcto. El participio de escribir es irregular." },
+                { q: "Elige la opción sin 'dequeísmo':", o: ["Pienso de que vendrá", "Me dijo de que no sabía", "Estoy seguro de que vendrá"], a: 2, f: "Correcto. 'Estar seguro' requiere la preposición 'de'." },
+                { q: "¿Cuál es el sujeto en: 'A Luis le gustan las manzanas'?", o: ["Luis", "Le", "Las manzanas"], a: 2, f: "El sujeto es 'las manzanas' (concuerda con el verbo)." },
+                { q: "Uso de 'Sino' vs 'Si no':", o: ["No quiero pan, sino agua", "No quiero pan, si no agua", "Sino vienes, me voy"], a: 0, f: "'Sino' contraponé una idea afirmativa a una negativa." },
+                { q: "Voz pasiva refleja correcta:", o: ["Se venden casas", "Se vende casas", "Véndense las casas"], a: 0, f: "El verbo debe concordar con el sujeto plural 'casas'." }
+            ],
+            redaccion: [
+                { q: "Identifica el pleonasmo (redundancia):", o: ["Subir arriba", "Entrar rápido", "Caminar lejos"], a: 0, f: "Subir ya implica ir hacia arriba." },
+                { q: "¿Qué signo introduce una enumeración?", o: ["Punto y coma", "Dos puntos", "Comillas"], a: 1, f: "Los dos puntos se usan para iniciar listas o explicaciones." },
+                { q: "Uso de la coma: ¿Cuál es correcta?", o: ["Hola, Juan.", "Hola Juan.", "Juan, fue al cine."], a: 0, f: "Se usa coma para separar el vocativo (la persona)." },
+                { q: "Conector causal:", o: ["Sin embargo", "Dado que", "Por lo tanto"], a: 1, f: "'Dado que' introduce el motivo o causa." },
+                { q: "Evitar la 'cosificación': Mejor alternativa a 'La cosa de la que hablamos':", o: ["El asunto", "El algo", "El eso"], a: 0, f: "Es mejor usar sustantivos precisos como 'asunto'." }
+            ],
+            vocabulario: [
+                { q: "Sinónimo de 'EFÍMERO':", o: ["Eterno", "Fugaz", "Pesado"], a: 1, f: "Algo fugaz dura muy poco tiempo." },
+                { q: "Analogía: MÉDICO es a HOSPITAL como PROFESOR es a:", o: ["Libro", "Alumno", "Escuela"], a: 2, f: "Relación de agente y lugar de trabajo." },
+                { q: "Antónimo de 'BELICISTA':", o: ["Guerrero", "Pacifista", "Agresivo"], a: 1, f: "El pacifista busca la paz, lo opuesto a la guerra." },
+                { q: "¿Qué significa 'Inhóspito'?", o: ["Lugar acogedor", "Lugar inhabitable", "Persona amable"], a: 1, f: "Un lugar que no ofrece seguridad ni comodidad." },
+                { q: "Palabra parónima: 'Aptitud' se refiere a:", o: ["Capacidad", "Postura del cuerpo", "Ánimo"], a: 0, f: "Aptitud es habilidad; Actitud es comportamiento." }
+            ],
+            ortografia: [
+                { q: "¿Cuál lleva tilde diacrítica (pronombre)?", o: ["El (artículo)", "Él (persona)", "Tu (posesivo)"], a: 1, f: "Él lleva tilde para distinguirse del artículo." },
+                { q: "Escritura correcta:", o: ["A traves", "Através", "A través"], a: 2, f: "Se escribe en dos palabras y con tilde." },
+                { q: "¿Cuál es esdrújula?", o: ["Camión", "Pájaro", "Mesa"], a: 1, f: "Pájaro lleva la fuerza en la antepenúltima sílaba." },
+                { q: "Uso de la 'H':", o: ["Echar de menos", "Hechar de menos", "Hachar de menos"], a: 0, f: "El verbo 'echar' (tirar) no lleva H." },
+                { q: "Palabra con 'G' o 'J':", o: ["Escojer", "Escoger", "Excojer"], a: 1, f: "Los verbos en -ger se escriben con G." }
+            ]
+        };
+
+        let currentQuiz = [];
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let answered = false;
+        let timeLeft = 30;
+        let timerInterval;
+
+        function startQuiz(category) {
+            currentQuiz = database[category];
+            currentQuestionIdx = 0;
+            score = 0;
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('question-box').classList.remove('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+            updateScoreDisplay();
+            showQuestion();
+        }
+
+        function showDashboard() {
+            clearInterval(timerInterval);
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('quiz-container').classList.add('hidden');
+        }
+
+        function showQuestion() {
+            answered = false;
+            const question = currentQuiz[currentQuestionIdx];
+            
+            // UI
+            document.getElementById('progress-text').innerText = `Pregunta ${currentQuestionIdx + 1} de ${currentQuiz.length}`;
+            document.getElementById('question-text').innerText = question.q;
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            updateProgressBar();
+            
+            const optionsDiv = document.getElementById('options-container');
+            optionsDiv.innerHTML = '';
+            
+            question.o.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx, btn);
+                optionsDiv.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 30;
+            updateTimerUI();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerUI();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const textEl = document.getElementById('timer-text');
+            const contEl = document.getElementById('timer-container');
+            textEl.innerText = timeLeft;
+            if (timeLeft <= 10) {
+                contEl.className = "w-14 h-14 rounded-full border-4 border-rose-500 flex items-center justify-center animate-pulse";
+                textEl.className = "text-lg font-bold text-rose-600";
+            } else {
+                contEl.className = "w-14 h-14 rounded-full border-4 border-indigo-100 flex items-center justify-center";
+                textEl.className = "text-lg font-bold text-indigo-600";
+            }
+        }
+
+        function checkAnswer(idx, btn) {
+            if (answered) return;
+            answered = true;
+            clearInterval(timerInterval);
+
+            const question = currentQuiz[currentQuestionIdx];
+            const feedback = document.getElementById('feedback');
+            const options = document.getElementById('options-container').children;
+
+            feedback.classList.remove('hidden');
+            
+            if(idx === question.a) {
+                score++;
+                btn.classList.add('correct-ans');
+                feedback.className = "mt-6 p-4 rounded-lg bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200";
+                feedback.innerHTML = `<i class="fas fa-check-circle mr-2"></i> ${question.f}`;
+            } else {
+                btn.classList.add('wrong-ans');
+                options[question.a].classList.add('correct-ans');
+                feedback.className = "mt-6 p-4 rounded-lg bg-rose-50 text-rose-700 font-semibold border border-rose-200";
+                feedback.innerHTML = `<i class="fas fa-times-circle mr-2"></i> Incorrecto. La respuesta era: ${question.o[question.a]}`;
+            }
+            
+            updateScoreDisplay();
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function handleTimeout() {
+            answered = true;
+            const question = currentQuiz[currentQuestionIdx];
+            const feedback = document.getElementById('feedback');
+            const options = document.getElementById('options-container').children;
+            
+            options[question.a].classList.add('correct-ans');
+            feedback.classList.remove('hidden');
+            feedback.className = "mt-6 p-4 rounded-lg bg-amber-50 text-amber-700 font-semibold border border-amber-200";
+            feedback.innerHTML = `<i class="fas fa-clock mr-2"></i> ¡Tiempo agotado! La respuesta era: ${question.o[question.a]}`;
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('score-counter').innerText = `Puntos: ${score}`;
+        }
+
+        function updateProgressBar() {
+            const progress = (currentQuestionIdx / currentQuiz.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+        }
+
+        function nextQuestion() {
+            currentQuestionIdx++;
+            if(currentQuestionIdx < currentQuiz.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('progress-bar').style.width = `100%`;
+            document.getElementById('question-box').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+            const percent = (score / currentQuiz.length) * 100;
+            document.getElementById('final-score-text').innerText = `Lograste ${score} de ${currentQuiz.length} puntos (${percent}%).`;
+            document.getElementById('result-icon').innerText = percent >= 80 ? '🏆' : (percent >= 50 ? '🥈' : '📚');
+        }
+    </script>
+</body>
+</html>
